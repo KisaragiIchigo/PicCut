@@ -1,0 +1,5 @@
+pyinstaller piccut.py ^
+  --name PicCut ^
+  --onefile --noconsole ^
+  --icon piccut.ico ^
+  --add-data "piccut.ico;."
