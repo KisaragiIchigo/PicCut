@@ -1,5 +1,9 @@
 # P!Ccut - まとめてトリミング ©️2025 KisaragiIchigo
 
+## Download
+
+[https://github.com/KisaragiIchigo/PicCut/releases/tag/v0.1.0]
+
 ## ツール概要
 
 画像の余白（白 or 黒）を**自動検出**して一括トリミングするデスクトップツール。
