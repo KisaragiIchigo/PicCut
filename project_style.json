@@ -1,0 +1,141 @@
+{
+  "meta": {
+    "app_name": "PicCut Ultra",
+    "version": "1.1.0",
+    "description": "画像の余白自動検出・一括トリミング＆マージン調整デスクトップアプリケーション",
+    "theme_mode": "dark",
+    "visual_philosophy": "Warm Titanium & Studio Slate. ギラつきのないマットチタンの質感とシャンパンアンバーのアクセントが際立つプロフェッショナル・スタジオデザイン"
+  },
+  "stack": {
+    "framework": "React 18",
+    "language": "TypeScript",
+    "bundler": "Vite",
+    "styling": "Tailwind CSS v3",
+    "components": "Radix UI Primitives",
+    "icons": "Lucide React",
+    "motion": "Framer Motion",
+    "desktop": "Electron"
+  },
+  "palette": {
+    "background": {
+      "app": "#12141a",
+      "panel": "rgba(22, 26, 35, 0.9)",
+      "card": "rgba(28, 33, 44, 0.8)",
+      "input": "rgba(16, 19, 26, 0.9)",
+      "tooltip": "#222836",
+      "overlay": "rgba(8, 10, 14, 0.85)"
+    },
+    "border": {
+      "subtle": "rgba(255, 255, 255, 0.07)",
+      "default": "rgba(255, 255, 255, 0.12)",
+      "focus": "rgba(245, 158, 11, 0.5)",
+      "accent": "rgba(245, 158, 11, 0.8)",
+      "glow": "rgba(245, 158, 11, 0.2)"
+    },
+    "text": {
+      "primary": "#f8fafc",
+      "secondary": "#cbd5e1",
+      "muted": "#818cf8",
+      "accent": "#fbbf24",
+      "on_accent": "#1c1404"
+    },
+    "accent": {
+      "primary": "#f59e0b",
+      "primary_hover": "#d97706",
+      "secondary": "#10b981",
+      "secondary_hover": "#059669",
+      "success": "#10b981",
+      "warning": "#fbbf24",
+      "danger": "#f43f5e"
+    },
+    "badge": {
+      "neutral_bg": "rgba(255, 255, 255, 0.06)",
+      "neutral_text": "#cbd5e1",
+      "accent_bg": "rgba(245, 158, 11, 0.15)",
+      "accent_text": "#fbbf24"
+    }
+  },
+  "typography": {
+    "font_family_latin": "\"Plus Jakarta Sans\", \"JetBrains Mono\", sans-serif",
+    "font_family_japanese": "\"Zen Kaku Gothic New\", \"BIZ UDPGothic\", sans-serif",
+    "font_family_mono": "\"JetBrains Mono\", \"Fira Code\", monospace",
+    "font_size": {
+      "xs": "11px",
+      "sm": "12px",
+      "base": "13px",
+      "md": "14px",
+      "lg": "16px",
+      "xl": "20px"
+    },
+    "font_weight": {
+      "normal": "400",
+      "medium": "500",
+      "semibold": "600",
+      "bold": "700"
+    },
+    "letter_spacing": {
+      "tight": "-0.01em",
+      "normal": "0em",
+      "wide": "0.025em",
+      "wider": "0.05em"
+    }
+  },
+  "texture": {
+    "backdrop_blur": "blur(12px)",
+    "panel_shadow": "0 12px 36px 0 rgba(0, 0, 0, 0.45)",
+    "glow_cyan": "0 0 16px rgba(245, 158, 11, 0.2)",
+    "glow_magenta": "0 0 16px rgba(244, 63, 94, 0.2)",
+    "inner_border": "inset 0 1px 0 0 rgba(255, 255, 255, 0.08)"
+  },
+  "density": {
+    "control_height_sm": "28px",
+    "control_height_md": "34px",
+    "control_height_lg": "40px",
+    "padding_panel": "16px",
+    "padding_card": "12px",
+    "gap_compact": "6px",
+    "gap_default": "10px",
+    "gap_relaxed": "16px",
+    "radius_sm": "4px",
+    "radius_md": "8px",
+    "radius_lg": "12px"
+  },
+  "motion": {
+    "transition_fast": "150ms cubic-bezier(0.16, 1, 0.3, 1)",
+    "transition_normal": "250ms cubic-bezier(0.16, 1, 0.3, 1)",
+    "transition_slow": "400ms cubic-bezier(0.16, 1, 0.3, 1)",
+    "scale_tap": 0.98,
+    "hover_glow": true
+  },
+  "zindex": {
+    "base": 0,
+    "dropzone_overlay": 20,
+    "panel": 30,
+    "header": 40,
+    "modal_backdrop": 50,
+    "modal_content": 60,
+    "tooltip": 70,
+    "notification": 80
+  },
+  "forbidden": {
+    "fonts": [
+      "Inter",
+      "Roboto",
+      "Arial",
+      "Outfit",
+      "system-ui"
+    ],
+    "patterns": [
+      "purple-gradient-on-white",
+      "flat-gray-borders-without-opacity",
+      "unresponsive-fixed-layouts",
+      "blocking-sync-image-processing"
+    ]
+  },
+  "app_text_tone": {
+    "language": "Japanese",
+    "persona_speech": "casual_female_engineer",
+    "in_app_ui_tone": "semi_formal_japanese",
+    "code_comment_tone": "concise_technical"
+  }
+}

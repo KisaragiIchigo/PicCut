@@ -1,0 +1,105 @@
+[
+  {
+    "version": "1.2.1",
+    "timestamp": "2026-08-22T10:19:50+09:00",
+    "target_files": [
+      "起動.bat",
+      "コンパイル.bat",
+      "changelogs.json"
+    ],
+    "summary": "Windows cmd.exe環境におけるバッチファイルのエンコーディング文字化け・構文破壊の修正",
+    "purpose": "UTF-8マルチバイト文字によるcmd.exeのコマンドパース破壊を防止し、あらゆるWindows環境で100%確実に起動・ビルドが行えるようバッチスクリプトを最適化するため",
+    "impact": "起動.bat および コンパイル.bat の安定動作を確立。",
+    "concerns": "特になし。"
+  },
+  {
+    "version": "1.2.0",
+    "timestamp": "2026-08-22T10:18:45+09:00",
+    "target_files": [
+      "起動.bat",
+      "コンパイル.bat",
+      "electron-builder.json5",
+      "package.json",
+      "README.md",
+      "changelogs.json"
+    ],
+    "summary": "ワンクリック起動バッチ (起動.bat) および Releaseフォルダへの単一EXE/Installer両対応コンパイルバッチ (コンパイル.bat) の追加",
+    "purpose": "ダブルクリックだけで開発起動およびポータブル版・インストーラー版のWindowsバイナリ生成を行えるようにするため",
+    "impact": "Release/ フォルダに PicCut_Ultra_Portable.exe と PicCut_Ultra_Setup_Installer.exe が一括生成されるパイプラインを確立。",
+    "concerns": "特になし。"
+  },
+  {
+    "version": "1.1.1",
+    "timestamp": "2026-08-22T10:16:45+09:00",
+    "target_files": [
+      "src/main/index.ts",
+      "changelogs.json"
+    ],
+    "summary": "Node.js ES Module環境における __dirname 未定義エラーの修正",
+    "purpose": "package.jsonのtype: module指定に伴い、Electronメインプロセスで発生していたReferenceError: __dirname is not definedをnode:urlのfileURLToPathを用いて完全解決するため",
+    "impact": "npm run dev および本番ビルドにおけるElectronプロセスの正常起動を保証。",
+    "concerns": "特になし。型チェック・ビルドともに通過済み。"
+  },
+  {
+    "version": "1.1.0",
+    "timestamp": "2026-08-22T10:16:00+09:00",
+    "target_files": [
+      "project_style.json",
+      "tailwind.config.js",
+      "src/renderer/index.css",
+      "src/renderer/App.tsx",
+      "src/renderer/components/TitleBar.tsx",
+      "src/renderer/components/PreviewCanvas.tsx",
+      "src/renderer/components/ControlPanel.tsx",
+      "src/renderer/components/DropZone.tsx",
+      "src/renderer/components/BatchQueueModal.tsx",
+      "src/renderer/components/ReadmeModal.tsx",
+      "README.md",
+      "changelogs.json"
+    ],
+    "summary": "デザインシステムを Warm Titanium & Champagne Amber (スタジオチタン × シャンパンアンバー) へ全面刷新",
+    "purpose": "ダークアクリルのネオングローから、ギラつきを抑えたプロ仕様のマットチタン質感と上品なアンバーゴールドアクセントの洗練された配色へとリフレッシュするため",
+    "impact": "全UIコンポーネントのカラー・シャドウ・境界線・検出オーバーレイを新テーマに統一。可読性と長時間の作業快適性を大幅向上。",
+    "concerns": "特になし。型チェック・Viteビルド共に通過確認済み。"
+  },
+  {
+    "version": "1.0.0",
+    "timestamp": "2026-08-22T10:14:40+09:00",
+    "target_files": [
+      "旧バージョン/",
+      "project_style.json",
+      "package.json",
+      "tsconfig.json",
+      "tsconfig.node.json",
+      "vite.config.ts",
+      "tailwind.config.js",
+      "postcss.config.js",
+      "electron-builder.json5",
+      "src/shared/types.ts",
+      "src/main/index.ts",
+      "src/main/preload.ts",
+      "src/main/services/imageProcessor.ts",
+      "src/main/services/configStore.ts",
+      "src/renderer/index.html",
+      "src/renderer/main.tsx",
+      "src/renderer/index.css",
+      "src/renderer/App.tsx",
+      "src/renderer/components/TitleBar.tsx",
+      "src/renderer/components/DropZone.tsx",
+      "src/renderer/components/PreviewCanvas.tsx",
+      "src/renderer/components/ControlPanel.tsx",
+      "src/renderer/components/BatchQueueModal.tsx",
+      "src/renderer/components/ReadmeModal.tsx",
+      "src/renderer/hooks/useImageProcessor.ts",
+      "src/renderer/hooks/useSettings.ts",
+      "src/renderer/utils/colorUtils.ts",
+      "src/renderer/utils/canvasDetection.ts",
+      "README.md",
+      "changelogs.json"
+    ],
+    "summary": "PicCutの旧バージョンフォルダ退避と Vite + React + TypeScript + Tailwind CSS + Electron による完全リメイク実装",
+    "purpose": "Python (PySide6) レガシーコードを旧バージョンフォルダに完全隔離し、モダンなUIスタックと超高速Sharp画像処理エンジンを備えたプロフェッショナルな一括トリミングツール「PicCut Ultra」を構築するため",
+    "impact": "ルートディレクトリを最新のモダンスタックに刷新。白・黒・透明・四隅自動の余白検出、リアルタイムプレビュー、Before/Afterスプリット比較、マルチスレッドバッチ処理、設定永続化、exe化設定を完備。",
+    "concerns": "特になし。TypeScript型チェック (tsc --noEmit) および Vite Production Build がエラーゼロで通過することを確認済み。"
+  }
+]

@@ -1,0 +1,38 @@
+{
+  "appId": "com.kisaragiichigo.piccut",
+  "productName": "PicCut Ultra",
+  "publish": null,
+  "directories": {
+    "output": "Release"
+  },
+  "files": [
+    "dist",
+    "dist-electron"
+  ],
+  "asarUnpack": [
+    "**/node_modules/sharp/**/*",
+    "**/node_modules/@img/**/*"
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      },
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      }
+    ],
+    "icon": "piccut.ico"
+  },
+  "portable": {
+    "artifactName": "PicCut_Ultra_Portable.${ext}"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "shortcutName": "PicCut Ultra",
+    "artifactName": "PicCut_Ultra_Setup_Installer.${ext}"
+  }
+}
