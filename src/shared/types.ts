@@ -21,6 +21,7 @@ export interface AppSettings {
   colorMode: DetectionColorMode;
   customColorHex: string;
   threshold: number; // 0 - 255 (許容誤差)
+  noiseTolerance: number; // 0 - 10 (%) 帯の中のウォーターマークや圧縮ノイズを無視する割合
   direction: TrimDirection;
   keepMargin: boolean;
   marginUnit: MarginUnit;
@@ -72,6 +73,7 @@ export interface ProcessImageOptions {
   colorMode: DetectionColorMode;
   customColorHex: string;
   threshold: number;
+  noiseTolerance: number;
   direction: TrimDirection;
   keepMargin: boolean;
   marginUnit: MarginUnit;
@@ -90,9 +92,10 @@ export interface ProcessImageOptions {
 export interface ElectronAPI {
   selectFiles: () => Promise<string[] | null>;
   selectDirectory: () => Promise<string | null>;
+  getPathForFile: (file: File) => string;
   scanDirectory: (dirPath: string) => Promise<string[]>;
   loadImageMetadata: (filePath: string) => Promise<{ width: number; height: number; size: number; base64Preview?: string }>;
-  detectBounds: (filePath: string, options: { colorMode: DetectionColorMode; customColorHex?: string; threshold: number; direction: TrimDirection }) => Promise<BoundingBox>;
+  detectBounds: (filePath: string, options: { colorMode: DetectionColorMode; customColorHex?: string; threshold: number; noiseTolerance: number; direction: TrimDirection }) => Promise<BoundingBox>;
   processSingleImage: (options: ProcessImageOptions) => Promise<{ success: boolean; outputPath: string; outputSize: number; error?: string }>;
   startBatchProcess: (items: string[], options: ProcessImageOptions) => Promise<void>;
   cancelBatchProcess: () => Promise<void>;

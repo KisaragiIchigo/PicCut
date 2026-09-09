@@ -1,5 +1,5 @@
 // src/main/preload.ts
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import {
   AppSettings,
   BatchProcessProgress,
@@ -12,6 +12,7 @@ import {
 contextBridge.exposeInMainWorld('electronAPI', {
   selectFiles: () => ipcRenderer.invoke('dialog:selectFiles'),
   selectDirectory: () => ipcRenderer.invoke('dialog:selectDirectory'),
+  getPathForFile: (file: File) => webUtils.getPathForFile(file),
   scanDirectory: (dirPath: string) => ipcRenderer.invoke('fs:scanDirectory', dirPath),
   loadImageMetadata: (filePath: string) => ipcRenderer.invoke('image:loadMetadata', filePath),
   detectBounds: (

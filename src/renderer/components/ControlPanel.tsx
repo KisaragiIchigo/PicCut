@@ -135,7 +135,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
             >
               <div className="flex items-center gap-1.5">
                 <Sparkles className="w-3 h-3 text-emerald-400" />
-                <span>四隅自動</span>
+                <span>背景自動</span>
               </div>
               {settings.colorMode === 'corner_auto' && <CheckCircle2 className="w-3 h-3 text-amber-400" />}
             </button>
@@ -153,6 +153,21 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               max="160"
               value={settings.threshold}
               onChange={(e) => onUpdateSettings({ threshold: Number(e.target.value) })}
+              className="w-full accent-amber-400 cursor-pointer h-1.5 bg-white/10 rounded-lg"
+            />
+          </div>
+
+          <div className="pt-1 space-y-1">
+            <div className="flex items-center justify-between text-[10px] text-text-muted">
+              <span>ノイズ許容 (帯の中の透かし文字を無視)</span>
+              <span className="font-mono text-amber-400">{settings.noiseTolerance}%</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="10"
+              value={settings.noiseTolerance}
+              onChange={(e) => onUpdateSettings({ noiseTolerance: Number(e.target.value) })}
               className="w-full accent-amber-400 cursor-pointer h-1.5 bg-white/10 rounded-lg"
             />
           </div>

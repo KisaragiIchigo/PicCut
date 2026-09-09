@@ -49,7 +49,7 @@ export const DropZone: React.FC<DropZoneProps> = ({ onFilesDropped, children }) 
       const files = Array.from(e.dataTransfer.files);
 
       for (const file of files) {
-        const p = (file as any).path;
+        const p = window.electronAPI?.getPathForFile(file);
         if (p) {
           droppedPaths.push(p);
         }

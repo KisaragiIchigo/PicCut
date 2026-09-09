@@ -6,6 +6,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   colorMode: 'white',
   customColorHex: '#ffffff',
   threshold: 70,
+  noiseTolerance: 2,
   direction: 'both',
   keepMargin: true,
   marginUnit: 'percent',

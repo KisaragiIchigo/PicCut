@@ -42,7 +42,7 @@ export const ReadmeModal: React.FC<ReadmeModalProps> = ({ isOpen, onClose }) => 
               ツール概要
             </h4>
             <p>
-              画像の不要な余白（白・黒・透明アルファ・四隅近似色など）を<strong>自動検出</strong>し、一括で高精度にトリミングするデスクトップツールです。
+              画像の不要な余白（白・黒・透明アルファ・自動判定した背景色など）を<strong>自動検出</strong>し、一括で高精度にトリミングするデスクトップツールです。
               ウィンドウの<strong>どこにドラッグ＆ドロップしてもOK</strong>、大量画像でも固まらない完全非同期マルチスレッド処理、<strong>リアルタイムな検出枠プレビュー</strong>を備えています。
             </p>
           </div>
@@ -70,7 +70,7 @@ export const ReadmeModal: React.FC<ReadmeModalProps> = ({ isOpen, onClose }) => 
                   高度な背景検出エンジン
                 </span>
                 <p className="text-[11px] text-text-muted">
-                  白・黒だけでなく、透明度（Alpha）、四隅自動サンプリング、許容しきい値（Tolerance）調整に対応。
+                  白・黒だけでなく、透明度（Alpha）、背景色の自動判定、許容しきい値（Tolerance）、ノイズ許容の調整に対応。ノイズ許容を上げると、余白の帯に入り込んだ透かし文字などを無視して切り抜けます。
                 </p>
               </div>
 

@@ -1,5 +1,85 @@
 [
   {
+    "version": "1.2.6",
+    "timestamp": "2026-09-10T01:40:00+09:00",
+    "target_files": [
+      "src/renderer/hooks/useImageProcessor.ts",
+      "changelogs.json"
+    ],
+    "summary": "フォルダを投下してから一覧に反映されるまで画面が無反応に見える問題の改善",
+    "purpose": "フォルダの走査自体は単一フォルダ・複数フォルダ同時・入れ子構造のいずれも正しく動作していたが、addFiles が対象を1件ずつ直列に処理し、全件の寸法とサムネイル生成が終わるまで setItems を呼ばなかった。このため大量投入時は完了まで一覧に何も表示されず、取り込みに対応していないように見えていた。",
+    "impact": "フォルダ展開の問い合わせを Promise.all で並列化し、実ファイル一覧が確定した時点でまずプレースホルダとして一覧へ反映するよう変更。寸法とサムネイルは同時実行数8のワーカーで取得し、届いたものから該当項目だけを差し替える。2フォルダ計140枚の同時投下で、改善前は経過3.1秒時点で表示0件・全件反映まで8.1秒だったものが、改善後は経過1.0秒で140件表示となることを CDP の Input.dispatchDragEvent による実測で確認した。",
+    "concerns": "差し替えを1件ごとの setItems で行うため、件数の二乗に比例した走査が発生する。140件規模では問題ないが、数千件を一度に投入する場合はバッチ反映へ変更する余地がある。サムネイル生成そのものの重さ（Sharp のデコードと base64 化）は未着手で、これは別途の速度改善対象。"
+  },
+  {
+    "version": "1.2.5",
+    "timestamp": "2026-09-10T01:05:00+09:00",
+    "target_files": [
+      "src/main/services/detection.ts",
+      "src/main/services/imageProcessor.ts",
+      "src/main/services/configStore.ts",
+      "src/shared/types.ts",
+      "src/renderer/hooks/useSettings.ts",
+      "src/renderer/hooks/useImageProcessor.ts",
+      "src/renderer/components/ControlPanel.tsx",
+      "src/renderer/components/ReadmeModal.tsx",
+      "README.md",
+      "changelogs.json"
+    ],
+    "summary": "余白の帯に透かし文字が入っている画像でトリミングがほとんど効かない不具合の修正（ノイズ許容の追加）",
+    "purpose": "走査が「その行・列に背景でない画素が1つでもあれば内容あり」と判定していたため、黒帯の中に入ったウォーターマーク（DL-Raw.Net など）や圧縮ノイズの数十画素で走査が止まり、帯をほとんど削れなかった。左右の帯にウォーターマークを置いた検証画像では、理想の left=1150 / right=2650 に対し left=150 / right=3649（3840→3499）にしかならないことを実測で確認した。",
+    "impact": "判定を割合ベースへ変更し、行・列の非背景画素が指定割合（noiseTolerance %）以下なら余白の一部として無視するようにした。既定値は2%。同じ検証画像でノイズ許容2%にすると left=1150 / right=2650 と理想値に完全一致し、既存の検証画像2枚（右のみ黒帯・左右黒帯）は結果不変で回帰なしを確認済み。あわせて4方向で重複していた走査ループを lineHasContent という純粋関数へ集約し、検出パネルにノイズ許容スライダー（0〜10%）を追加した。",
+    "concerns": "ノイズ許容を上げすぎると、1本の細い罫線のみで構成される内容が余白として切り落とされる可能性がある。透かし文字の高さが画像高さに占める割合より大きい値を選ぶ必要があり、既定の2%は高さ2160pxに対し約43px相当。上下方向の検出は依然として元画像全体を走査するため、左右の帯が全行にまたがる画像では上下の余白を検出できない（2パス化は未対応）。"
+  },
+  {
+    "version": "1.2.4",
+    "timestamp": "2026-09-10T00:20:00+09:00",
+    "target_files": [
+      "src/main/services/detection.ts",
+      "src/main/services/imageProcessor.ts",
+      "src/renderer/components/ControlPanel.tsx",
+      "src/renderer/components/ReadmeModal.tsx",
+      "README.md",
+      "changelogs.json"
+    ],
+    "summary": "背景色の自動判定（旧・四隅自動）が画像によって余白を全く検出できない不具合の修正と、検出ロジックの分離",
+    "purpose": "corner_auto は四隅4点の平均色を背景色としていたため、辺ごとに帯の色が異なる画像（右側だけ黒帯で左が白ページなど）では平均が中間色となり、白とも黒とも一致せず余白を一切検出できなかった。左右とも黒帯の画像では四隅が揃うため正常に動作し、同じ黒帯を持つ画像でも結果が食い違っていた。",
+    "impact": "背景色を四隅の平均ではなく、上下左右それぞれの辺の最外周1ラインの最頻色から個別に求める方式へ変更した。右のみ黒帯の検証画像で修正前 left=0 / right=1920（検出なし）だったものが left=560 / right=1400 となり、左右とも黒帯の画像における既存の正しい挙動（left=1150 / right=2650）は不変であることを実測で確認済み。あわせて肥大化していた imageProcessor.ts（400行）から検出ロジックを detection.ts へ分離し、imageProcessor 側は再エクスポートで既存の import パスを維持した（imageProcessor 217行 / detection 256行）。UI のボタン表記を四隅自動から背景自動へ変更し、README と ReadmeModal の説明も同期した。",
+    "concerns": "上下方向の検出は元画像全体を走査するため、左右の帯が全行にまたがる画像では上下の余白を検出できない。左右を切ってから上下を判定する2パス方式にすれば解消するが、今回の報告範囲外のため未対応。実画像での確認はユーザーの実機に依存する。"
+  },
+  {
+    "version": "1.2.3",
+    "timestamp": "2026-09-09T23:05:00+09:00",
+    "target_files": [
+      "src/renderer/components/DropZone.tsx",
+      "src/main/preload.ts",
+      "src/shared/types.ts",
+      "changelogs.json"
+    ],
+    "summary": "フォルダおよび複数画像のドラッグ＆ドロップが一切反応しない不具合の修正",
+    "purpose": "DropZone が投下ファイルの実パスを (file as any).path から取得していたが、この File.path 拡張は Electron 32 で削除され webUtils.getPathForFile へ置き換わっている。本プロジェクトは Electron 34 のため常に undefined となり、収集パスが空配列のまま onFilesDropped が呼ばれず、ドラッグ中のオーバーレイは表示されるのにドロップしても何も起きない状態だった。",
+    "impact": "preload に webUtils.getPathForFile を contextBridge 経由で公開し、DropZone をそれを使う形へ変更。ElectronAPI 型にも getPathForFile を追加した。as any キャストが不要になり型検査が効くようになった。パッケージ版 exe で window.electronAPI.getPathForFile が function として解決されることを CDP で確認済み。",
+    "concerns": "ドラッグ＆ドロップ操作そのものは GUI 操作のため自動検証できておらず、API の公開状態までの確認にとどまる。実ファイルを投下した際の挙動は実機確認が必要。"
+  },
+  {
+    "version": "1.2.2",
+    "timestamp": "2026-09-09T22:30:00+09:00",
+    "target_files": [
+      "src/main/index.ts",
+      "vite.config.ts",
+      "package.json",
+      "tsconfig.node.json",
+      "electron-builder.json5",
+      "postcss.config.mjs",
+      "tailwind.config.mjs",
+      "changelogs.json"
+    ],
+    "summary": "パッケージ版(exe)がウィンドウを出すだけで UI を描画しない不具合の修正",
+    "purpose": "原因は独立した2件。(1) process.env.DIST が dist ではなく asar のルートを指しており、loadFile が存在しない app.asar/index.html を読みに行っていた。(2) package.json の type:module により vite-plugin-electron が main/preload を ESM で出力し、Electron の preload ローダーが Only URLs with a scheme in: file and data are supported by the default ESM loader で失敗して contextBridge が一切公開されていなかった。",
+    "impact": "DIST を __dirname/../../dist へ修正。package.json から type:module を外して main/preload を CommonJS (.cjs) で出力する構成へ変更し、これに伴い postcss.config と tailwind.config を .mjs へリネーム。BrowserWindow の icon が参照する piccut.ico を electron-builder の files に追加。パッケージ版 exe を CDP で検証し、window.electronAPI が18キーすべて公開され、React が #root にマウントされ readyState が complete になることを確認済み。",
+    "concerns": "dev 起動は VITE_DEV_SERVER_URL 経由の loadURL を通るため (1) を踏まず、preload も dev サーバー経由で読まれるため (2) も顕在化しない。どちらも本番パッケージでのみ再現する種類の不具合である。検証時は Claude Code の実行環境に ELECTRON_RUN_AS_NODE=1 が設定されており Electron が Node モードで即終了するため同変数の解除が必須。またウィンドウ生成の確認だけでは描画の成否を判定できず、CDP (--remote-debugging-port) で document と window.electronAPI を評価する必要がある。"
+  },
+  {
     "version": "1.2.1",
     "timestamp": "2026-08-22T10:19:50+09:00",
     "target_files": [

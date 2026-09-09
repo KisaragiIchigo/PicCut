@@ -2,13 +2,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
-import {
-  BoundingBox,
-  DetectionColorMode,
-  ProcessImageOptions,
-  TrimDirection,
-  BatchProcessProgress,
-} from '../../shared/types';
+import { ProcessImageOptions, BatchProcessProgress } from '../../shared/types';
+import { detectWhitespaceBounds, hexToRgb } from './detection';
+
+// 検出ロジックは detection.ts へ分離したが、既存の呼び出し元が
+// imageProcessor 経由で参照しているため同じ名前で再公開する。
+export { detectWhitespaceBounds };
 
 export const SUPPORTED_EXTENSIONS = new Set([
   '.png',
@@ -48,188 +47,6 @@ export function scanDirectoryRecursively(dirPath: string): string[] {
   return results;
 }
 
-function hexToRgb(hex: string): { r: number; g: number; b: number } {
-  let clean = hex.replace('#', '');
-  if (clean.length === 3) {
-    clean = clean.split('').map((c) => c + c).join('');
-  }
-  const num = parseInt(clean, 16);
-  return {
-    r: (num >> 16) & 255,
-    g: (num >> 8) & 255,
-    b: num & 255,
-  };
-}
-
-export async function detectWhitespaceBounds(
-  filePath: string,
-  options: {
-    colorMode: DetectionColorMode;
-    customColorHex?: string;
-    threshold: number;
-    direction: TrimDirection;
-  }
-): Promise<BoundingBox> {
-  const { colorMode, customColorHex = '#ffffff', threshold, direction } = options;
-
-  const image = sharp(filePath);
-  const { data, info } = await image.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  const { width: w, height: h, channels } = info;
-
-  let targetR = 255;
-  let targetG = 255;
-  let targetB = 255;
-
-  if (colorMode === 'custom') {
-    const rgb = hexToRgb(customColorHex);
-    targetR = rgb.r;
-    targetG = rgb.g;
-    targetB = rgb.b;
-  } else if (colorMode === 'black') {
-    targetR = 0;
-    targetG = 0;
-    targetB = 0;
-  } else if (colorMode === 'corner_auto') {
-    // 四隅のピクセルから背景色をサンプリング
-    const corners = [
-      0, // (0,0)
-      (w - 1) * channels, // (w-1, 0)
-      (h - 1) * w * channels, // (0, h-1)
-      ((h - 1) * w + (w - 1)) * channels, // (w-1, h-1)
-    ];
-    let sumR = 0;
-    let sumG = 0;
-    let sumB = 0;
-    for (const idx of corners) {
-      sumR += data[idx];
-      sumG += data[idx + 1];
-      sumB += data[idx + 2];
-    }
-    targetR = Math.round(sumR / 4);
-    targetG = Math.round(sumG / 4);
-    targetB = Math.round(sumB / 4);
-  }
-
-  const isBackground = (x: number, y: number): boolean => {
-    const idx = (y * w + x) * channels;
-    const r = data[idx];
-    const g = data[idx + 1];
-    const b = data[idx + 2];
-    const a = data[idx + 3];
-
-    if (colorMode === 'alpha') {
-      return a <= threshold;
-    }
-
-    if (a < 15) {
-      // ほぼ透明なピクセルは背景として判定
-      return true;
-    }
-
-    if (colorMode === 'white') {
-      return r >= 255 - threshold && g >= 255 - threshold && b >= 255 - threshold;
-    }
-
-    if (colorMode === 'black') {
-      return r <= threshold && g <= threshold && b <= threshold;
-    }
-
-    // custom or corner_auto
-    const diff = Math.max(Math.abs(r - targetR), Math.abs(g - targetG), Math.abs(b - targetB));
-    return diff <= threshold;
-  };
-
-  let left = 0;
-  let right = w;
-  let top = 0;
-  let bottom = h;
-
-  const scanH = direction === 'both' || direction === 'horizontal' || direction === 'left_only' || direction === 'right_only';
-  const scanV = direction === 'both' || direction === 'vertical' || direction === 'top_only' || direction === 'bottom_only';
-
-  if (scanH) {
-    if (direction !== 'right_only') {
-      for (let x = 0; x < w; x++) {
-        let hasContent = false;
-        for (let y = 0; y < h; y++) {
-          if (!isBackground(x, y)) {
-            hasContent = true;
-            break;
-          }
-        }
-        if (hasContent) {
-          left = x;
-          break;
-        }
-      }
-    }
-
-    if (direction !== 'left_only') {
-      for (let x = w - 1; x >= 0; x--) {
-        let hasContent = false;
-        for (let y = 0; y < h; y++) {
-          if (!isBackground(x, y)) {
-            hasContent = true;
-            break;
-          }
-        }
-        if (hasContent) {
-          right = x + 1;
-          break;
-        }
-      }
-    }
-  }
-
-  if (scanV) {
-    if (direction !== 'bottom_only') {
-      for (let y = 0; y < h; y++) {
-        let hasContent = false;
-        for (let x = 0; x < w; x++) {
-          if (!isBackground(x, y)) {
-            hasContent = true;
-            break;
-          }
-        }
-        if (hasContent) {
-          top = y;
-          break;
-        }
-      }
-    }
-
-    if (direction !== 'top_only') {
-      for (let y = h - 1; y >= 0; y--) {
-        let hasContent = false;
-        for (let x = 0; x < w; x++) {
-          if (!isBackground(x, y)) {
-            hasContent = true;
-            break;
-          }
-        }
-        if (hasContent) {
-          bottom = y + 1;
-          break;
-        }
-      }
-    }
-  }
-
-  left = Math.max(0, Math.min(left, w - 1));
-  right = Math.max(left + 1, Math.min(right, w));
-  top = Math.max(0, Math.min(top, h - 1));
-  bottom = Math.max(top + 1, Math.min(bottom, h));
-
-  return {
-    left,
-    top,
-    right,
-    bottom,
-    width: right - left,
-    height: bottom - top,
-  };
-}
-
 export function computeOutputPath(filePath: string, options: ProcessImageOptions): string {
   const dir = path.dirname(filePath);
   const ext = path.extname(filePath);
@@ -265,6 +82,7 @@ export async function processSingleImageFile(
     colorMode: options.colorMode,
     customColorHex: options.customColorHex,
     threshold: options.threshold,
+    noiseTolerance: options.noiseTolerance,
     direction: options.direction,
   });
 

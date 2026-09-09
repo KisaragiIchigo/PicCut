@@ -2,7 +2,6 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import { ConfigStore } from './services/configStore';
 import {
@@ -13,26 +12,24 @@ import {
 } from './services/imageProcessor';
 import { ProcessImageOptions } from '../shared/types';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // The built directory structure
 //
 // ├─┬ dist-electron
 // │ ├─┬ main
-// │ │ └── index.js
+// │ │ └── index.cjs
 // │ └─┬ preload
-// │   └── preload.js
+// │   └── preload.cjs
 // ├─┬ dist
 // │ └── index.html
 
-process.env.DIST = path.join(__dirname, '../..');
+process.env.DIST = path.join(__dirname, '../../dist');
 process.env.VITE_PUBLIC = app.isPackaged
   ? process.env.DIST
   : path.join(process.env.DIST, '../public');
 
 let win: BrowserWindow | null = null;
-const preload = path.join(__dirname, '../preload/preload.js');
+const preload = path.join(__dirname, '../preload/preload.cjs');
 const url = process.env.VITE_DEV_SERVER_URL;
 const indexHtml = path.join(process.env.DIST, 'index.html');
 

@@ -9,6 +9,9 @@ import {
 } from '../../shared/types';
 import { detectBoundsFromCanvas } from '../utils/canvasDetection';
 
+// メタデータ取得の同時実行数。Sharp 側のスレッドプールが律速になるため増やしすぎない。
+const METADATA_CONCURRENCY = 8;
+
 export function useImageProcessor(settings: AppSettings) {
   const [items, setItems] = useState<ImageItem[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
@@ -25,61 +28,67 @@ export function useImageProcessor(settings: AppSettings) {
 
   // ファイル/フォルダの追加
   const addFiles = useCallback(async (filePaths: string[]) => {
-    const newItems: ImageItem[] = [];
-
-    for (const p of filePaths) {
-      // フォルダの場合はスキャン
-      let targets = [p];
-      if (window.electronAPI?.scanDirectory) {
+    // フォルダは実ファイルの一覧へ展開する。投下された各パスは独立なので並列で問い合わせる。
+    const expanded = await Promise.all(
+      filePaths.map(async (p) => {
+        if (!window.electronAPI?.scanDirectory) return [p];
         try {
           const scanned = await window.electronAPI.scanDirectory(p);
-          if (scanned && scanned.length > 0) {
-            targets = scanned;
-          }
+          return scanned && scanned.length > 0 ? scanned : [p];
         } catch {
-          // 通常ファイル扱い
+          // フォルダでなければ通常ファイルとして扱う
+          return [p];
         }
-      }
+      })
+    );
 
-      for (const targetPath of targets) {
-        const fileName = targetPath.split(/[/\\]/).pop() || targetPath;
-        const id = `${targetPath}_${Date.now()}_${Math.random()}`;
+    const targets = expanded.flat();
+    if (targets.length === 0) return;
 
-        let dimensions = undefined;
-        let fileSize = 0;
-        let previewUrl = targetPath;
+    // 寸法とサムネイルの取得を待たずに一覧へ反映する。
+    // 全件そろうまで待つと、大量投入時に画面が無反応に見えてしまう。
+    const stamp = Date.now();
+    const placeholders: ImageItem[] = targets.map((targetPath, index) => ({
+      id: `${targetPath}_${stamp}_${index}`,
+      filePath: targetPath,
+      fileName: targetPath.split(/[/\\]/).pop() || targetPath,
+      fileSize: 0,
+      previewUrl: targetPath,
+      status: 'pending',
+    }));
+    setItems((prev) => [...prev, ...placeholders]);
 
-        if (window.electronAPI?.loadImageMetadata) {
+    const loadMetadata = window.electronAPI?.loadImageMetadata;
+    if (!loadMetadata) return;
+
+    // 取得できたものから順に差し替える
+    let cursor = 0;
+    const workers = Array.from(
+      { length: Math.min(METADATA_CONCURRENCY, placeholders.length) },
+      async () => {
+        while (cursor < placeholders.length) {
+          const target = placeholders[cursor++];
           try {
-            const meta = await window.electronAPI.loadImageMetadata(targetPath);
-            dimensions = { width: meta.width, height: meta.height };
-            fileSize = meta.size;
-            if (meta.base64Preview) {
-              previewUrl = meta.base64Preview;
-            }
+            const meta = await loadMetadata(target.filePath);
+            setItems((prev) =>
+              prev.map((item) =>
+                item.id === target.id
+                  ? {
+                      ...item,
+                      fileSize: meta.size,
+                      dimensions: { width: meta.width, height: meta.height },
+                      previewUrl: meta.base64Preview || item.previewUrl,
+                    }
+                  : item
+              )
+            );
           } catch {
-            // メタデータロード失敗
+            // 読み込めない画像は一覧に残したまま次へ進む
           }
         }
-
-        newItems.push({
-          id,
-          filePath: targetPath,
-          fileName,
-          fileSize,
-          dimensions,
-          previewUrl,
-          status: 'pending',
-        });
       }
-    }
-
-    if (newItems.length > 0) {
-      setItems((prev) => {
-        const combined = [...prev, ...newItems];
-        return combined;
-      });
-    }
+    );
+    await Promise.all(workers);
   }, []);
 
   // 選択アイテムの余白検出
@@ -97,6 +106,7 @@ export function useImageProcessor(settings: AppSettings) {
           colorMode: settings.colorMode,
           customColorHex: settings.customColorHex,
           threshold: settings.threshold,
+          noiseTolerance: settings.noiseTolerance,
           direction: settings.direction,
         });
         setDetectedBox(bounds);
@@ -186,6 +196,7 @@ export function useImageProcessor(settings: AppSettings) {
       colorMode: settings.colorMode,
       customColorHex: settings.customColorHex,
       threshold: settings.threshold,
+      noiseTolerance: settings.noiseTolerance,
       direction: settings.direction,
       keepMargin: settings.keepMargin,
       marginUnit: settings.marginUnit,

@@ -16,6 +16,12 @@ export default defineConfig({
             outDir: 'dist-electron/main',
             rollupOptions: {
               external: ['sharp', 'electron'],
+              // Electron は main/preload を CommonJS として読み込む。ESM で出力すると
+              // preload が "Only URLs with a scheme in: file and data are supported by
+              // the default ESM loader" で失敗し、contextBridge が一切公開されなくなる。
+              output: {
+                entryFileNames: '[name].cjs',
+              },
             },
           },
         },
@@ -31,6 +37,11 @@ export default defineConfig({
         vite: {
           build: {
             outDir: 'dist-electron/preload',
+            rollupOptions: {
+              output: {
+                entryFileNames: '[name].cjs',
+              },
+            },
           },
         },
       },
