@@ -33,6 +33,8 @@ export const BatchQueueModal: React.FC<BatchQueueModalProps> = ({
       : 0;
 
   const isDone = progress.isCompleted || progress.isCancelled;
+  // 統一サイズの基準を決めるための事前解析フェーズ
+  const isScanning = progress.phase === 'scanning' && !isDone;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4">
@@ -48,14 +50,20 @@ export const BatchQueueModal: React.FC<BatchQueueModalProps> = ({
             {isDone ? (
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
             ) : (
-              <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+              <div
+                className={`w-4 h-4 border-2 border-t-transparent rounded-full animate-spin ${
+                  isScanning ? 'border-emerald-400' : 'border-amber-400'
+                }`}
+              />
             )}
             <h3 className="text-xs font-bold text-text-primary">
               {isDone
                 ? progress.isCancelled
                   ? '一括処理を中断しました'
                   : '一括トリミング処理が完了しました'
-                : '一括トリミング処理中...'}
+                : isScanning
+                  ? '統一サイズの基準を解析中...'
+                  : '一括トリミング処理中...'}
             </h3>
           </div>
           {isDone && (
@@ -76,11 +84,17 @@ export const BatchQueueModal: React.FC<BatchQueueModalProps> = ({
               <span className="text-text-secondary">
                 {progress.currentIndex} / {progress.totalCount} 枚
               </span>
-              <span className="text-amber-400 font-bold">{percent}%</span>
+              <span className={`font-bold ${isScanning ? 'text-emerald-400' : 'text-amber-400'}`}>
+                {percent}%
+              </span>
             </div>
             <div className="w-full h-2.5 bg-black/40 rounded-full overflow-hidden border border-white/10 p-0.5">
               <motion.div
-                className="h-full bg-gradient-to-r from-amber-500 to-yellow-400 rounded-full shadow-[0_0_10px_rgba(245,158,11,0.5)]"
+                className={`h-full rounded-full ${
+                  isScanning
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_10px_rgba(16,185,129,0.5)]'
+                    : 'bg-gradient-to-r from-amber-500 to-yellow-400 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                }`}
                 initial={{ width: 0 }}
                 animate={{ width: `${percent}%` }}
                 transition={{ duration: 0.2 }}
@@ -91,7 +105,7 @@ export const BatchQueueModal: React.FC<BatchQueueModalProps> = ({
           {/* Current file name */}
           {!isDone && (
             <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[11px] truncate text-text-muted">
-              <span className="text-text-secondary mr-1">処理中:</span>
+              <span className="text-text-secondary mr-1">{isScanning ? '解析中:' : '処理中:'}</span>
               <span className="font-mono text-text-primary">{progress.currentFileName || '準備中...'}</span>
             </div>
           )}

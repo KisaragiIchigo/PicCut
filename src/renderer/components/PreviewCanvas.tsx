@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ZoomIn,
   ZoomOut,
-  Columns,
   Image as ImageIcon,
   Sparkles,
 } from 'lucide-react';
@@ -14,18 +13,28 @@ import { formatBytes } from '../utils/colorUtils';
 interface PreviewCanvasProps {
   selectedItem: ImageItem | null;
   detectedBox: BoundingBox | null;
+  /** サイズ統一で余白が足される場合の、最終的なキャンバス範囲 */
+  unifiedBox: BoundingBox | null;
   isLoading: boolean;
+  /** 統一が効く場合の最終寸法（仕上げマージンを足す前） */
+  outputSize: { width: number; height: number } | null;
+  /** 統一の基準を算出中か */
+  isPlanning: boolean;
+  /** サイズ統一が実際に適用される状態か */
+  isUnified: boolean;
   onBoxChange?: (newBox: BoundingBox) => void;
 }
 
 export const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
   selectedItem,
   detectedBox,
+  unifiedBox,
   isLoading,
+  outputSize,
+  isPlanning,
+  isUnified,
 }) => {
   const [zoom, setZoom] = useState(1);
-  const [showSplit, setShowSplit] = useState(false);
-  const [splitPos, setSplitPos] = useState(50); // %
 
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
@@ -51,8 +60,9 @@ export const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
   const imgWidth = selectedItem?.dimensions?.width || 0;
   const imgHeight = selectedItem?.dimensions?.height || 0;
 
-  const boxW = detectedBox ? detectedBox.width : imgWidth;
-  const boxH = detectedBox ? detectedBox.height : imgHeight;
+  // 統一が効く場合は、その画像単体の検出結果ではなく実際に書き出される寸法を見せる
+  const boxW = outputSize ? outputSize.width : detectedBox ? detectedBox.width : imgWidth;
+  const boxH = outputSize ? outputSize.height : detectedBox ? detectedBox.height : imgHeight;
   const reductionPercent =
     imgWidth && imgHeight && boxW && boxH
       ? Math.max(0, Math.round((1 - (boxW * boxH) / (imgWidth * imgHeight)) * 100))
@@ -113,24 +123,23 @@ export const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
                   -{reductionPercent}% 余白削減
                 </span>
               )}
+              {isPlanning ? (
+                <span className="px-1.5 py-0.5 rounded-full bg-white/[0.06] text-text-secondary border border-white/10 text-[10px]">
+                  統一サイズを解析中
+                </span>
+              ) : (
+                isUnified && (
+                  <span className="px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-semibold border border-emerald-500/30 text-[10px]">
+                    全画像で統一
+                  </span>
+                )
+              )}
             </div>
           )}
         </div>
 
-        {/* Controls: Split view / Zoom */}
+        {/* Controls: Zoom */}
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => setShowSplit(!showSplit)}
-            className={`p-1.5 rounded transition-colors ${
-              showSplit
-                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                : 'text-text-secondary hover:text-text-primary hover:bg-white/[0.08]'
-            }`}
-            title="Before / After スプリット比較"
-          >
-            <Columns className="w-3.5 h-3.5" />
-          </button>
-          <div className="h-3.5 w-px bg-white/10 mx-1" />
           <button
             onClick={handleZoomOut}
             className="p-1.5 text-text-secondary hover:text-text-primary hover:bg-white/[0.08] rounded transition-colors"
@@ -189,7 +198,7 @@ export const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
             />
 
             {/* Bounding Box Overlay SVG */}
-            {detectedBox && imgWidth > 0 && imgHeight > 0 && !showSplit && (
+            {detectedBox && imgWidth > 0 && imgHeight > 0 && (
               <svg
                 className="absolute inset-0 w-full h-full pointer-events-none"
                 viewBox={`0 0 ${imgWidth} ${imgHeight}`}
@@ -229,6 +238,22 @@ export const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
                   filter="drop-shadow(0 0 6px rgba(245,158,11,0.6))"
                 />
 
+                {/* 統一後のキャンバス範囲。この内側に切り出しが中央配置される */}
+                {unifiedBox && (
+                  <rect
+                    x={unifiedBox.left}
+                    y={unifiedBox.top}
+                    width={unifiedBox.width}
+                    height={unifiedBox.height}
+                    fill="none"
+                    stroke="#10b981"
+                    strokeWidth={Math.max(1.5, Math.round(imgWidth / 500))}
+                    strokeDasharray="16 12"
+                    opacity={0.9}
+                    filter="drop-shadow(0 0 5px rgba(16,185,129,0.5))"
+                  />
+                )}
+
                 {/* Corner Accents */}
                 <g stroke="#fbbf24" strokeWidth={Math.max(2.5, Math.round(imgWidth / 300))} fill="none">
                   {/* Top-Left */}
@@ -243,60 +268,9 @@ export const PreviewCanvas: React.FC<PreviewCanvasProps> = ({
               </svg>
             )}
 
-            {/* Split Comparison Slider (Before/After) */}
-            {showSplit && detectedBox && (
-              <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div
-                  className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center"
-                  style={{
-                    clipPath: `polygon(${splitPos}% 0, 100% 0, 100% 100%, ${splitPos}% 100%)`,
-                  }}
-                >
-                  <div className="absolute top-2 right-2 px-2 py-1 bg-black/80 text-[10px] font-mono text-amber-300 rounded border border-amber-500/30">
-                    After (トリミング予定)
-                  </div>
-                </div>
-
-                <div
-                  className="absolute inset-0 pointer-events-auto"
-                  style={{
-                    clipPath: `polygon(0 0, ${splitPos}% 0, ${splitPos}% 100%, 0 100%)`,
-                  }}
-                >
-                  <div className="absolute top-2 left-2 px-2 py-1 bg-black/80 text-[10px] font-mono text-text-secondary rounded border border-white/20">
-                    Before (元画像)
-                  </div>
-                </div>
-
-                {/* Divider Line */}
-                <div
-                  className="absolute top-0 bottom-0 w-0.5 bg-amber-400 shadow-[0_0_10px_#f59e0b] pointer-events-none"
-                  style={{ left: `${splitPos}%` }}
-                >
-                  <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-amber-500 text-black flex items-center justify-center shadow-lg cursor-ew-resize">
-                    <Columns className="w-3.5 h-3.5" />
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Split slider controller */}
-        {showSplit && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-[#161a24] px-4 py-2 rounded-full border border-white/10 flex items-center gap-3 shadow-xl z-20">
-            <span className="text-[11px] text-text-muted font-mono">Before</span>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={splitPos}
-              onChange={(e) => setSplitPos(Number(e.target.value))}
-              className="w-36 accent-amber-400 cursor-pointer"
-            />
-            <span className="text-[11px] text-amber-400 font-mono">After</span>
-          </div>
-        )}
       </div>
     </div>
   );

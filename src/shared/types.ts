@@ -17,12 +17,30 @@ export interface BoundingBox {
   height: number;
 }
 
+/** 一括処理で全画像に適用する統一プラン */
+export interface BatchPlan {
+  /** 統一後の出力サイズ（仕上げマージンを足す前） */
+  width: number;
+  height: number;
+  /**
+   * 切り出し位置も揃える場合の共通矩形。
+   * サイズだけを揃える場合は null で、各画像は個別に検出した位置で切り出す。
+   */
+  sharedBox: BoundingBox | null;
+  /** 解析できた画像の枚数 */
+  analyzedCount: number;
+}
+
 export interface AppSettings {
   colorMode: DetectionColorMode;
   customColorHex: string;
   threshold: number; // 0 - 255 (許容誤差)
   noiseTolerance: number; // 0 - 10 (%) 帯の中のウォーターマークや圧縮ノイズを無視する割合
   direction: TrimDirection;
+  /** 複数枚を一括処理するとき、全画像の出力サイズを揃える */
+  unifyBatchSize: boolean;
+  /** サイズだけでなく切り出し位置も全画像で揃える（同じレイアウトの連番ページ向け） */
+  unifyCropPosition: boolean;
   keepMargin: boolean;
   marginUnit: MarginUnit;
   marginValue: number; // % または px
@@ -58,6 +76,8 @@ export interface ImageItem {
 }
 
 export interface BatchProcessProgress {
+  /** scanning: 統一基準を決めるための全画像プリスキャン中 / processing: 書き出し中 */
+  phase: 'scanning' | 'processing';
   currentIndex: number;
   totalCount: number;
   currentFileName: string;
@@ -75,6 +95,8 @@ export interface ProcessImageOptions {
   threshold: number;
   noiseTolerance: number;
   direction: TrimDirection;
+  unifyBatchSize: boolean;
+  unifyCropPosition: boolean;
   keepMargin: boolean;
   marginUnit: MarginUnit;
   marginValue: number;
@@ -96,6 +118,17 @@ export interface ElectronAPI {
   scanDirectory: (dirPath: string) => Promise<string[]>;
   loadImageMetadata: (filePath: string) => Promise<{ width: number; height: number; size: number; base64Preview?: string }>;
   detectBounds: (filePath: string, options: { colorMode: DetectionColorMode; customColorHex?: string; threshold: number; noiseTolerance: number; direction: TrimDirection }) => Promise<BoundingBox>;
+  computeBatchPlan: (
+    filePaths: string[],
+    options: {
+      colorMode: DetectionColorMode;
+      customColorHex?: string;
+      threshold: number;
+      noiseTolerance: number;
+      direction: TrimDirection;
+      unifyCropPosition: boolean;
+    }
+  ) => Promise<BatchPlan | null>;
   processSingleImage: (options: ProcessImageOptions) => Promise<{ success: boolean; outputPath: string; outputSize: number; error?: string }>;
   startBatchProcess: (items: string[], options: ProcessImageOptions) => Promise<void>;
   cancelBatchProcess: () => Promise<void>;

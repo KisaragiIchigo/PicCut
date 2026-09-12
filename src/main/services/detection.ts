@@ -10,6 +10,22 @@ export interface Rgb {
 
 type Edge = 'left' | 'right' | 'top' | 'bottom';
 
+/** 走査対象の矩形範囲（x1 / y1 は終端の次を指す） */
+interface Region {
+  x0: number;
+  x1: number;
+  y0: number;
+  y1: number;
+}
+
+/** 内容が見つからなかった辺は null を返し、呼び出し側でフォールバックさせる */
+interface ScannedEdges {
+  left: number | null;
+  right: number | null;
+  top: number | null;
+  bottom: number | null;
+}
+
 export interface DetectionOptions {
   colorMode: DetectionColorMode;
   customColorHex?: string;
@@ -36,13 +52,14 @@ export function hexToRgb(hex: string): Rgb {
  * 指定した辺の最外周1ラインから最頻色を求める。
  * 四隅4点の平均では、辺ごとに帯の色が異なる画像（右側だけ黒帯など）で
  * どの帯の色とも一致しない中間色になり、余白を一切検出できなくなる。
+ * 複数辺を渡した場合は、それらをまとめて集計した最頻色を返す。
  */
 function sampleEdgeColor(
   data: Buffer,
   w: number,
   h: number,
   channels: number,
-  edge: Edge
+  edges: Edge | Edge[]
 ): Rgb {
   const buckets = new Map<number, { count: number; r: number; g: number; b: number }>();
 
@@ -63,15 +80,17 @@ function sampleEdgeColor(
     }
   };
 
-  if (edge === 'left' || edge === 'right') {
-    const x = edge === 'left' ? 0 : w - 1;
-    for (let y = 0; y < h; y++) {
-      collect((y * w + x) * channels);
-    }
-  } else {
-    const y = edge === 'top' ? 0 : h - 1;
-    for (let x = 0; x < w; x++) {
-      collect((y * w + x) * channels);
+  for (const edge of Array.isArray(edges) ? edges : [edges]) {
+    if (edge === 'left' || edge === 'right') {
+      const x = edge === 'left' ? 0 : w - 1;
+      for (let y = 0; y < h; y++) {
+        collect((y * w + x) * channels);
+      }
+    } else {
+      const y = edge === 'top' ? 0 : h - 1;
+      for (let x = 0; x < w; x++) {
+        collect((y * w + x) * channels);
+      }
     }
   }
 
@@ -133,19 +152,20 @@ function createBackgroundMatcher(
 }
 
 /**
- * 1行ぶんを走査し、背景でない画素が minPixels 個以上あれば内容ありとみなす。
+ * 1ライン中の [from, to) を走査し、背景でない画素が minPixels 個以上あれば内容ありとみなす。
  * 1画素でも内容と判定すると、帯の中のウォーターマークや圧縮ノイズで
  * 走査が止まり余白がほとんど削れなくなる。
  */
 function lineHasContent(
   isBackground: (x: number, y: number) => boolean,
   fixed: number,
-  length: number,
+  from: number,
+  to: number,
   axis: 'column' | 'row',
   minPixels: number
 ): boolean {
   let found = 0;
-  for (let i = 0; i < length; i++) {
+  for (let i = from; i < to; i++) {
     const x = axis === 'column' ? fixed : i;
     const y = axis === 'column' ? i : fixed;
     if (!isBackground(x, y)) {
@@ -158,10 +178,83 @@ function lineHasContent(
   return false;
 }
 
+/** region の各辺から内側へ走査し、最初に内容を含む行・列を返す */
+function scanEdges(
+  matcherFor: (edge: Edge) => (x: number, y: number) => boolean,
+  direction: TrimDirection,
+  region: Region,
+  minInColumn: number,
+  minInRow: number
+): ScannedEdges {
+  const { x0, x1, y0, y1 } = region;
+  const found: ScannedEdges = { left: null, right: null, top: null, bottom: null };
+
+  const scanH =
+    direction === 'both' || direction === 'horizontal' || direction === 'left_only' || direction === 'right_only';
+  const scanV =
+    direction === 'both' || direction === 'vertical' || direction === 'top_only' || direction === 'bottom_only';
+
+  if (scanH) {
+    if (direction !== 'right_only') {
+      const isBackground = matcherFor('left');
+      for (let x = x0; x < x1; x++) {
+        if (lineHasContent(isBackground, x, y0, y1, 'column', minInColumn)) {
+          found.left = x;
+          break;
+        }
+      }
+    }
+
+    if (direction !== 'left_only') {
+      const isBackground = matcherFor('right');
+      for (let x = x1 - 1; x >= x0; x--) {
+        if (lineHasContent(isBackground, x, y0, y1, 'column', minInColumn)) {
+          found.right = x + 1;
+          break;
+        }
+      }
+    }
+  }
+
+  if (scanV) {
+    if (direction !== 'bottom_only') {
+      const isBackground = matcherFor('top');
+      for (let y = y0; y < y1; y++) {
+        if (lineHasContent(isBackground, y, x0, x1, 'row', minInRow)) {
+          found.top = y;
+          break;
+        }
+      }
+    }
+
+    if (direction !== 'top_only') {
+      const isBackground = matcherFor('bottom');
+      for (let y = y1 - 1; y >= y0; y--) {
+        if (lineHasContent(isBackground, y, x0, x1, 'row', minInRow)) {
+          found.bottom = y + 1;
+          break;
+        }
+      }
+    }
+  }
+
+  return found;
+}
+
+export interface DetectionResult {
+  box: BoundingBox;
+  /** 切り出し範囲が元画像の外へはみ出したときに埋める色 */
+  background: Rgb;
+  /** 埋めを透過として扱うか（alpha モード） */
+  backgroundIsTransparent: boolean;
+  imageWidth: number;
+  imageHeight: number;
+}
+
 export async function detectWhitespaceBounds(
   filePath: string,
   options: DetectionOptions
-): Promise<BoundingBox> {
+): Promise<DetectionResult> {
   const { colorMode, customColorHex = '#ffffff', threshold, direction, noiseTolerance } = options;
 
   const image = sharp(filePath);
@@ -175,75 +268,56 @@ export async function detectWhitespaceBounds(
         ? { r: 0, g: 0, b: 0 }
         : { r: 255, g: 255, b: 255 };
 
-  // corner_auto は辺ごとに帯の色が違い得るため、辺単位で背景色を決める
-  const matcherFor = (edge: Edge) =>
-    createBackgroundMatcher(
+  // corner_auto は辺ごとに帯の色が違い得るため、辺単位で背景色を決める。
+  // 2パス走査で同じ辺を二度引くので、サンプリング結果は使い回す。
+  const matcherCache = new Map<Edge, (x: number, y: number) => boolean>();
+  const matcherFor = (edge: Edge) => {
+    const cached = matcherCache.get(edge);
+    if (cached) {
+      return cached;
+    }
+    const matcher = createBackgroundMatcher(
       data,
       w,
       channels,
       colorMode,
       threshold,
-      colorMode === 'corner_auto'
-        ? sampleEdgeColor(data, w, h, channels, edge)
-        : fixedBackground
+      colorMode === 'corner_auto' ? sampleEdgeColor(data, w, h, channels, edge) : fixedBackground
     );
+    matcherCache.set(edge, matcher);
+    return matcher;
+  };
 
-  let left = 0;
-  let right = w;
-  let top = 0;
-  let bottom = h;
+  // パス1: 1画素でも内容があれば拾い、被写体の素の外接矩形を得る
+  const base = scanEdges(matcherFor, direction, { x0: 0, x1: w, y0: 0, y1: h }, 1, 1);
 
-  const minPixelsIn = (length: number) =>
-    Math.max(1, Math.floor((length * noiseTolerance) / 100));
-  const minInColumn = minPixelsIn(h);
-  const minInRow = minPixelsIn(w);
-
-  const scanH = direction === 'both' || direction === 'horizontal' || direction === 'left_only' || direction === 'right_only';
-  const scanV = direction === 'both' || direction === 'vertical' || direction === 'top_only' || direction === 'bottom_only';
-
-  if (scanH) {
-    if (direction !== 'right_only') {
-      const isBackground = matcherFor('left');
-      for (let x = 0; x < w; x++) {
-        if (lineHasContent(isBackground, x, h, 'column', minInColumn)) {
-          left = x;
-          break;
-        }
-      }
-    }
-
-    if (direction !== 'left_only') {
-      const isBackground = matcherFor('right');
-      for (let x = w - 1; x >= 0; x--) {
-        if (lineHasContent(isBackground, x, h, 'column', minInColumn)) {
-          right = x + 1;
-          break;
-        }
-      }
-    }
+  // パス2: ノイズ許容のしきい値を、画像全体ではなくパス1で得た内容領域に対する割合で決める。
+  // 画像サイズ基準では余白が広い画像ほどしきい値だけが肥大し、被写体の端を削ってしまう。
+  // 走査範囲もパス1の内容領域に限るため、広大な余白を二度走ることはない。
+  let scanned = base;
+  if (noiseTolerance > 0) {
+    const region: Region = {
+      x0: base.left ?? 0,
+      x1: base.right ?? w,
+      y0: base.top ?? 0,
+      y1: base.bottom ?? h,
+    };
+    const minInColumn = Math.max(1, Math.floor(((region.y1 - region.y0) * noiseTolerance) / 100));
+    const minInRow = Math.max(1, Math.floor(((region.x1 - region.x0) * noiseTolerance) / 100));
+    const refined = scanEdges(matcherFor, direction, region, minInColumn, minInRow);
+    // しきい値を上げた結果その辺の内容が全滅した場合は、パス1の位置へ戻す
+    scanned = {
+      left: refined.left ?? base.left,
+      right: refined.right ?? base.right,
+      top: refined.top ?? base.top,
+      bottom: refined.bottom ?? base.bottom,
+    };
   }
 
-  if (scanV) {
-    if (direction !== 'bottom_only') {
-      const isBackground = matcherFor('top');
-      for (let y = 0; y < h; y++) {
-        if (lineHasContent(isBackground, y, w, 'row', minInRow)) {
-          top = y;
-          break;
-        }
-      }
-    }
-
-    if (direction !== 'top_only') {
-      const isBackground = matcherFor('bottom');
-      for (let y = h - 1; y >= 0; y--) {
-        if (lineHasContent(isBackground, y, w, 'row', minInRow)) {
-          bottom = y + 1;
-          break;
-        }
-      }
-    }
-  }
+  let left = scanned.left ?? 0;
+  let right = scanned.right ?? w;
+  let top = scanned.top ?? 0;
+  let bottom = scanned.bottom ?? h;
 
   left = Math.max(0, Math.min(left, w - 1));
   right = Math.max(left + 1, Math.min(right, w));
@@ -251,11 +325,23 @@ export async function detectWhitespaceBounds(
   bottom = Math.max(top + 1, Math.min(bottom, h));
 
   return {
-    left,
-    top,
-    right,
-    bottom,
-    width: right - left,
-    height: bottom - top,
+    box: {
+      left,
+      top,
+      right,
+      bottom,
+      width: right - left,
+      height: bottom - top,
+    },
+    // 統一サイズ指定で切り出し範囲が画像外へ出たときに埋める色。
+    // corner_auto は外周4辺をまとめて集計した最頻色を使う。
+    background:
+      colorMode === 'corner_auto'
+        ? sampleEdgeColor(data, w, h, channels, ['left', 'right', 'top', 'bottom'])
+        : fixedBackground,
+    backgroundIsTransparent: colorMode === 'alpha',
+    imageWidth: w,
+    imageHeight: h,
   };
 }
+

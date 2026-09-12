@@ -5,10 +5,12 @@ import fs from 'node:fs';
 import sharp from 'sharp';
 import { ConfigStore } from './services/configStore';
 import {
-  detectWhitespaceBounds,
+  computeBatchPlan,
+  detectWithCache,
   processSingleImageFile,
   scanDirectoryRecursively,
   BatchProcessor,
+  BatchPlanOptions,
 } from './services/imageProcessor';
 import { ProcessImageOptions } from '../shared/types';
 
@@ -195,7 +197,15 @@ ipcMain.handle('image:loadMetadata', async (_event, filePath: string) => {
 ipcMain.handle(
   'image:detectBounds',
   async (_event, filePath: string, options) => {
-    return detectWhitespaceBounds(filePath, options);
+    const detected = await detectWithCache(filePath, options);
+    return detected.box;
+  }
+);
+
+ipcMain.handle(
+  'batch:computePlan',
+  async (_event, filePaths: string[], options: BatchPlanOptions) => {
+    return computeBatchPlan(filePaths, options);
   }
 );
 

@@ -13,14 +13,20 @@
   - **背景色の自動判定**（上下左右それぞれの辺から個別に背景色を求めるため、片側だけ帯の色が異なる画像にも対応）
   - **ノイズ許容の調整**（余白の帯に入り込んだ透かし文字や圧縮ノイズを無視して検出）
   - **許容しきい値（Tolerance）スライダー調整**
+  - **トリミング方向の選択**（四方 / 左右のみ / 上下のみ / 左・右・上・下の片側のみ）
+- **一括サイズ統一**: 複数枚をまとめて処理するとき、全画像を先に解析して共通の出力サイズを決め、すべて同じ寸法で書き出します。連続したページを扱う際に、余白の多い画像だけ細くなるのを防げます。
+  - 余白のある側が画像ごとに異なっていても、**各画像はそれぞれの余白を正しく削った上で**サイズだけが揃います。
+  - **切り出し位置も揃える**オプション（任意）: 全画像をまったく同じ座標で切り抜きます。同じ判型のページが並ぶ場合の位置ずれ防止に有効です。
+  - 統一後の寸法はプレビューに反映され、書き出し前に確認できます。
+  - 検出結果はキャッシュされるため、プレビューで解析済みの内容は書き出し時に再利用されます。
 - **リアルタイム比較プレビュー**:
   - 検出枠（ネオンシアンのアニメーション破線）のオーバーレイ表示
   - 元画像サイズ・トリミング後サイズ・削減率（%）のリアルタイム表示
-  - Before / After スプリット比較スライダー
+  - 統一後のキャンバス範囲のオーバーレイ表示（サイズ統一で余白が足される場合）
   - 拡大・縮小ズーム対応
 - **柔軟な余白（マージン）＆出力オプション**:
   - トリミング後の余白追加（% または px）
-  - 余白背景色（透過、白、黒）
+  - 余白背景色（透過、白、黒、検出した背景色に合わせる）
   - 安全な保存設計（`Remake/` サブフォルダ保存、上書き保存、カスタム出力先）
   - 出力フォーマット変換（元形式維持、PNG、WebP、JPEG）
 - **高速マルチスレッド・バッチ処理**: 大量ファイル・重い高解像度画像でもUIが固まらない非同期ワーカー処理と進捗モーダル。
@@ -76,9 +82,21 @@ PicCut/
 │  │  ├─ index.ts              # アプリ起動・ライフサイクル・IPC
 │  │  ├─ preload.ts            # 安全な ContextBridge API
 │  │  └─ services/
-│  │     ├─ imageProcessor.ts  # Sharp 画像処理・出力パス解決・バッチ処理
+│  │     ├─ imageProcessor.ts  # 画像処理の公開窓口（processing/ と batch/ のバレル）
 │  │     ├─ detection.ts       # 余白境界検出・辺ごとの背景色サンプリング
-│  │     └─ configStore.ts     # 設定永続化
+│  │     ├─ detectionCache.ts  # 検出結果の LRU キャッシュ
+│  │     ├─ configStore.ts     # 設定永続化
+│  │     ├─ processing/        # 1枚ぶんの処理パイプライン
+│  │     │  ├─ processSingleImage.ts  # 各ステップを順に呼ぶオーケストレータ
+│  │     │  ├─ buildCropGeometry.ts   # 切り出し矩形と埋め量の導出（純粋関数）
+│  │     │  ├─ applyExtensions.ts     # 統一の埋めと仕上げマージンの付与
+│  │     │  ├─ applyOutputFormat.ts   # 出力形式・品質の適用
+│  │     │  ├─ outputPath.ts          # 出力パス解決
+│  │     │  └─ fileScan.ts            # 対応拡張子・再帰走査
+│  │     └─ batch/             # 一括処理
+│  │        ├─ BatchProcessor.ts      # 進捗・中止制御のオーケストレータ
+│  │        ├─ computeBatchPlan.ts    # 統一プランの算出
+│  │        └─ unionOfBoxes.ts        # 矩形の和集合（純粋関数）
 │  ├─ renderer/                # React レンダラー (UI)
 │  │  ├─ index.html
 │  │  ├─ main.tsx
@@ -87,12 +105,27 @@ PicCut/
 │  │  ├─ components/           # UIコンポーネント群
 │  │  │  ├─ TitleBar.tsx       # カスタムタイトルバー
 │  │  │  ├─ DropZone.tsx       # 全域D&D受け入れ
-│  │  │  ├─ PreviewCanvas.tsx  # プレビュー・検出枠・スプリット比較
-│  │  │  ├─ ControlPanel.tsx   # インスペクタ操作パネル
+│  │  │  ├─ PreviewCanvas.tsx  # プレビュー・検出枠・統一範囲の表示
+│  │  │  ├─ ControlPanel/      # インスペクタ操作パネル
+│  │  │  │  ├─ index.tsx                   # 各セクションを並べるオーケストレータ
+│  │  │  │  ├─ DetectionColorSection.tsx   # 検出カラー・しきい値
+│  │  │  │  ├─ TrimDirectionSection.tsx    # トリミング方向
+│  │  │  │  ├─ UnifySizeSection.tsx        # 一括サイズ統一
+│  │  │  │  ├─ MarginSection.tsx           # 余白設定
+│  │  │  │  ├─ OutputSection.tsx           # 保存・出力形式
+│  │  │  │  ├─ QueueListSection.tsx        # 投入リスト
+│  │  │  │  ├─ PanelActions.tsx            # 投入・実行ボタン
+│  │  │  │  └─ controlStyles.ts            # 共通のクラス定義
 │  │  │  ├─ BatchQueueModal.tsx# 一括処理進捗モーダル
 │  │  │  └─ ReadmeModal.tsx    # 使い方・ガイド
 │  │  ├─ hooks/                # カスタムフック
-│  │  │  ├─ useImageProcessor.ts
+│  │  │  ├─ useImageProcessor.ts       # 各フックを束ねるオーケストレータ
+│  │  │  ├─ imageProcessor/
+│  │  │  │  ├─ useImageQueue.ts        # 投入・メタデータ取得・選択
+│  │  │  │  ├─ useBoundsDetection.ts   # 選択画像の余白検出
+│  │  │  │  ├─ useBatchPlan.ts         # 統一プランの事前算出
+│  │  │  │  ├─ useBatchRunner.ts       # 実行・進捗購読・中止
+│  │  │  │  └─ buildProcessOptions.ts  # 設定→処理オプション（純粋関数）
 │  │  │  └─ useSettings.ts
 │  │  └─ utils/                # ユーティリティ
 │  │     ├─ colorUtils.ts

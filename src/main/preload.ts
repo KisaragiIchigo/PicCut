@@ -2,6 +2,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import {
   AppSettings,
+  BatchPlan,
   BatchProcessProgress,
   BoundingBox,
   DetectionColorMode,
@@ -24,6 +25,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
       direction: TrimDirection;
     }
   ): Promise<BoundingBox> => ipcRenderer.invoke('image:detectBounds', filePath, options),
+  computeBatchPlan: (
+    filePaths: string[],
+    options: {
+      colorMode: DetectionColorMode;
+      customColorHex?: string;
+      threshold: number;
+      noiseTolerance: number;
+      direction: TrimDirection;
+      unifyCropPosition: boolean;
+    }
+  ): Promise<BatchPlan | null> => ipcRenderer.invoke('batch:computePlan', filePaths, options),
   processSingleImage: (options: ProcessImageOptions) =>
     ipcRenderer.invoke('image:processSingle', options),
   startBatchProcess: (items: string[], options: ProcessImageOptions) =>

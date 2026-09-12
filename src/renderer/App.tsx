@@ -17,7 +17,11 @@ export function App() {
     selectedItem,
     setSelectedIndex,
     detectedBox,
+    unifiedBox,
+    outputSize,
     isDetecting,
+    batchPlan,
+    isPlanning,
     isProcessing,
     batchProgress,
     isBatchModalOpen,
@@ -45,7 +49,11 @@ export function App() {
           <PreviewCanvas
             selectedItem={selectedItem}
             detectedBox={detectedBox}
+            unifiedBox={unifiedBox}
             isLoading={isDetecting}
+            outputSize={outputSize}
+            isPlanning={isPlanning}
+            isUnified={batchPlan !== null}
           />
 
           {/* Right: Inspector Control Panel */}
@@ -60,6 +68,8 @@ export function App() {
             onPickDirectory={pickDirectory}
             onStartProcessing={startProcessing}
             isProcessing={isProcessing}
+            batchPlan={batchPlan}
+            isPlanning={isPlanning}
           />
         </main>
       </DropZone>

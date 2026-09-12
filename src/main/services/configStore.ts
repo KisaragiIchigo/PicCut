@@ -10,6 +10,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   threshold: 70,
   noiseTolerance: 2,
   direction: 'both',
+  unifyBatchSize: true,
+  unifyCropPosition: false,
   keepMargin: true,
   marginUnit: 'percent',
   marginValue: 5,

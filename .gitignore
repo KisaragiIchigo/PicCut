@@ -4,7 +4,6 @@ dist/
 dist-electron/
 Release/
 release/
-
 # Logs & Cache
 *.log
 npm-debug.log*
@@ -12,12 +11,10 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 .eslintcache
-
 # OS generated files
 .DS_Store
 Thumbs.db
 *.tmp
-
 # Legacy Python build files
 __pycache__/
 *.py[cod]
@@ -26,3 +23,29 @@ __pycache__/
 旧バージョン/build/
 旧バージョン/dist/
 旧バージョン/config/
+desktop.ini
+ehthumbs.db
+IconCache.db
+$RECYCLE.BIN
+._*
+*.temp
+*.bak
+*.swp
+changelogs.json
+project_style.json
+implementation_plan.md
+walkthrough.md
+.gemini
+node_modules
+dist
+build
+Release
+release
+*.exe
+.env
+.env.*
+__pycache__
+.venv
+.gemini/
+src/main/services/processing/buildCropGeometry.ts
+src/renderer/hooks/imageProcessor/buildProcessOptions.ts

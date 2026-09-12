@@ -76,11 +76,21 @@ export const ReadmeModal: React.FC<ReadmeModalProps> = ({ isOpen, onClose }) => 
 
               <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-1">
                 <span className="font-semibold text-text-primary flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  一括サイズ統一
+                </span>
+                <p className="text-xs text-text-secondary leading-relaxed">
+                  複数枚をまとめて処理するとき、すべての画像を同じ出力サイズで書き出します。余白のある側が画像ごとに異なっていても、各画像はそれぞれの余白を正しく削った上でサイズだけが揃います。統一後の寸法はプレビューに表示されるため、書き出す前に確認できます。「切り出し位置も揃える」を有効にすると、全画像をまったく同じ座標で切り抜きます。
+                </p>
+              </div>
+
+              <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-1">
+                <span className="font-semibold text-text-primary flex items-center gap-1.5">
                   <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" />
                   仕上げマージン付与
                 </span>
                 <p className="text-[11px] text-text-muted">
-                  トリミング後に指定比率（%）または固定ピクセル（px）の余白を透過・白・黒キャンバスで付加可能。
+                  トリミング後に指定比率（%）または固定ピクセル（px）の余白を透過・白・黒キャンバスで付加可能。トリミング後の短辺を基準に四方へ同じ太さで付きます。
                 </p>
               </div>
 
@@ -90,7 +100,7 @@ export const ReadmeModal: React.FC<ReadmeModalProps> = ({ isOpen, onClose }) => 
                   リアルタイム比較プレビュー
                 </span>
                 <p className="text-[11px] text-text-muted">
-                  検出枠オーバーレイ、Before/After スプリット比較、ズーム拡大・縮小に対応。
+                  検出枠のオーバーレイ、統一後のキャンバス範囲の表示、ズーム拡大・縮小に対応。設定を変更すると自動で再解析されます。
                 </p>
               </div>
             </div>
@@ -110,7 +120,7 @@ export const ReadmeModal: React.FC<ReadmeModalProps> = ({ isOpen, onClose }) => 
                 <strong className="text-text-primary">パラメータを調整</strong>：右側パネルで検出カラー、トリミング方向、余白%、保存先を選択。
               </li>
               <li>
-                <strong className="text-text-primary">プレビュー確認</strong>：中央ビューポートで検出枠（アンバー破線）と削減サイズを確認。
+                <strong className="text-text-primary">プレビュー確認</strong>：中央ビューポートで検出枠（アンバーの破線）と削減サイズを確認。サイズ統一によって余白が足される場合は、統一後のキャンバス範囲がエメラルドの破線で重ねて表示されます。
               </li>
               <li>
                 <strong className="text-text-primary">処理開始</strong>：「トリミング実行」ボタンをクリック。一括処理時は進捗モーダルが表示され、完了後にワンクリックで保存フォルダを開けます。
