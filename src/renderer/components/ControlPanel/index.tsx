@@ -1,7 +1,7 @@
 // src/renderer/components/ControlPanel/index.tsx
 import React from 'react';
 import { Sliders, Trash2 } from 'lucide-react';
-import { AppSettings, BatchPlan, ImageItem } from '../../../shared/types';
+import { AppSettings, BatchPlan, BatchPlanGroup, ImageItem } from '../../../shared/types';
 import { DetectionColorSection } from './DetectionColorSection';
 import { MarginSection } from './MarginSection';
 import { OutputSection } from './OutputSection';
@@ -22,6 +22,7 @@ interface ControlPanelProps {
   onStartProcessing: () => void;
   isProcessing: boolean;
   batchPlan: BatchPlan | null;
+  activeGroup: BatchPlanGroup | null;
   isPlanning: boolean;
 }
 
@@ -37,6 +38,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   onStartProcessing,
   isProcessing,
   batchPlan,
+  activeGroup,
   isPlanning,
 }) => (
   <aside className="w-80 h-full flex flex-col bg-[#151923] border border-white/[0.08] rounded-xl overflow-hidden shadow-2xl shrink-0">
@@ -65,6 +67,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         onUpdateSettings={onUpdateSettings}
         itemCount={items.length}
         batchPlan={batchPlan}
+        activeGroup={activeGroup}
         isPlanning={isPlanning}
       />
       <MarginSection settings={settings} onUpdateSettings={onUpdateSettings} />

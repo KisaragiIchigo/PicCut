@@ -21,6 +21,7 @@ export function App() {
     outputSize,
     isDetecting,
     batchPlan,
+    activeGroup,
     isPlanning,
     isProcessing,
     batchProgress,
@@ -53,7 +54,7 @@ export function App() {
             isLoading={isDetecting}
             outputSize={outputSize}
             isPlanning={isPlanning}
-            isUnified={batchPlan !== null}
+            isUnified={activeGroup !== null}
           />
 
           {/* Right: Inspector Control Panel */}
@@ -69,6 +70,7 @@ export function App() {
             onStartProcessing={startProcessing}
             isProcessing={isProcessing}
             batchPlan={batchPlan}
+            activeGroup={activeGroup}
             isPlanning={isPlanning}
           />
         </main>

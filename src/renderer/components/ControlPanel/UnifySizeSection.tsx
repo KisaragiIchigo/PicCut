@@ -1,7 +1,7 @@
 // src/renderer/components/ControlPanel/UnifySizeSection.tsx
 import React from 'react';
 import { Frame } from 'lucide-react';
-import { AppSettings, BatchPlan } from '../../../shared/types';
+import { AppSettings, BatchPlan, BatchPlanGroup } from '../../../shared/types';
 import { helpTextClass, sectionCardClass } from './controlStyles';
 
 interface Props {
@@ -9,6 +9,8 @@ interface Props {
   onUpdateSettings: (newPartial: Partial<AppSettings>) => void;
   itemCount: number;
   batchPlan: BatchPlan | null;
+  /** 選択中の画像に適用されるグループ */
+  activeGroup: BatchPlanGroup | null;
   isPlanning: boolean;
 }
 
@@ -17,6 +19,7 @@ export const UnifySizeSection: React.FC<Props> = ({
   onUpdateSettings,
   itemCount,
   batchPlan,
+  activeGroup,
   isPlanning,
 }) => (
   <div className={sectionCardClass}>
@@ -34,8 +37,10 @@ export const UnifySizeSection: React.FC<Props> = ({
     </label>
 
     <p className={helpTextClass}>
-      複数枚をまとめて処理するとき、すべての画像を同じ出力サイズに揃えます。
+      複数枚をまとめて処理するとき、出力サイズを揃えます。
       余白のある側が画像ごとに異なっていても、それぞれの余白を正しく削ったうえでサイズだけを合わせます。
+      揃える相手は<strong className="text-text-primary">元の寸法が同じ画像どうし</strong>に限られるため、
+      表紙と本文のように判型の違うものが混ざっていても、互いのサイズに引きずられることはありません。
     </p>
 
     {settings.unifyBatchSize && (
@@ -56,15 +61,24 @@ export const UnifySizeSection: React.FC<Props> = ({
           </p>
         </div>
 
-        <div className="pt-1 border-t border-white/[0.05] text-[11px] font-mono">
+        <div className="pt-1 border-t border-white/[0.05] text-[11px] font-mono space-y-0.5">
           {itemCount <= 1 ? (
             <span className="text-text-muted">2枚以上の投入で有効になります</span>
           ) : isPlanning ? (
             <span className="text-emerald-400">統一サイズを解析中...</span>
           ) : batchPlan ? (
-            <span className="text-emerald-400">
-              {batchPlan.analyzedCount}件 → {batchPlan.width}×{batchPlan.height} に統一
-            </span>
+            <>
+              <div className="text-emerald-400">
+                {activeGroup
+                  ? `この画像: ${activeGroup.memberCount}件を ${activeGroup.width}×${activeGroup.height} に統一`
+                  : `${batchPlan.analyzedCount}件を解析済み`}
+              </div>
+              {batchPlan.groups.length > 1 && (
+                <div className="text-text-muted">
+                  元の寸法が {batchPlan.groups.length} 種類あるため、判型ごとに分けて揃えます
+                </div>
+              )}
+            </>
           ) : (
             <span className="text-text-muted">解析待ち</span>
           )}

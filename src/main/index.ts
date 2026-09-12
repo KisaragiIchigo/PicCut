@@ -174,9 +174,12 @@ ipcMain.handle('fs:scanDirectory', async (_event, dirPath: string) => {
 ipcMain.handle('image:loadMetadata', async (_event, filePath: string) => {
   try {
     const stat = fs.statSync(filePath);
-    const meta = await sharp(filePath).metadata();
+    // ファイルパスを sharp へ直接渡すとハンドルが残り、上書き保存の書き戻しを妨げる。
+    // 一度だけ読み込んだバッファから寸法とサムネイルの両方を作る。
+    const source = await fs.promises.readFile(filePath);
+    const meta = await sharp(source).metadata();
     // プレビュー用の軽量サムネイルBase64を生成（最大幅800px）
-    const thumbBuffer = await sharp(filePath)
+    const thumbBuffer = await sharp(source)
       .resize({ width: 800, height: 800, fit: 'inside', withoutEnlargement: true })
       .toFormat('webp', { quality: 80 })
       .toBuffer();

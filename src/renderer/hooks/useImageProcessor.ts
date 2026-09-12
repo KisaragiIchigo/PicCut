@@ -1,5 +1,6 @@
 // src/renderer/hooks/useImageProcessor.ts
 import { useCallback } from 'react';
+import { findPlanGroup } from '../../shared/batchPlan';
 import { AppSettings, BoundingBox } from '../../shared/types';
 import { useBatchPlan } from './imageProcessor/useBatchPlan';
 import { useBatchRunner } from './imageProcessor/useBatchRunner';
@@ -12,12 +13,19 @@ export function useImageProcessor(settings: AppSettings) {
   const plan = useBatchPlan(queue.items, settings);
   const runner = useBatchRunner(queue.items, queue.selectedItem, settings);
 
+  // 選択中の画像に適用されるグループ。判型の違う画像とは統一されない
+  const activeGroup = findPlanGroup(
+    plan.batchPlan,
+    queue.selectedItem?.dimensions?.width ?? 0,
+    queue.selectedItem?.dimensions?.height ?? 0
+  );
+
   // プレビューへ渡す枠。位置も揃える設定のときは、実際に切られる共通矩形を見せる
-  const effectiveBox: BoundingBox | null = plan.batchPlan?.sharedBox ?? detection.detectedBox;
+  const effectiveBox: BoundingBox | null = activeGroup?.sharedBox ?? detection.detectedBox;
 
   // 統一が効く場合の最終寸法（仕上げマージンを足す前）
-  const outputSize = plan.batchPlan
-    ? { width: plan.batchPlan.width, height: plan.batchPlan.height }
+  const outputSize = activeGroup
+    ? { width: activeGroup.width, height: activeGroup.height }
     : detection.detectedBox
       ? { width: detection.detectedBox.width, height: detection.detectedBox.height }
       : null;
@@ -27,12 +35,11 @@ export function useImageProcessor(settings: AppSettings) {
   // 位置も揃える設定では検出枠そのものが共通矩形になるため、重ねる意味がない。
   const unifiedBox: BoundingBox | null = (() => {
     const box = detection.detectedBox;
-    const current = plan.batchPlan;
-    if (!current || current.sharedBox || !box) {
+    if (!activeGroup || activeGroup.sharedBox || !box) {
       return null;
     }
-    const padLeft = Math.max(0, Math.floor((current.width - box.width) / 2));
-    const padTop = Math.max(0, Math.floor((current.height - box.height) / 2));
+    const padLeft = Math.max(0, Math.floor((activeGroup.width - box.width) / 2));
+    const padTop = Math.max(0, Math.floor((activeGroup.height - box.height) / 2));
     if (padLeft === 0 && padTop === 0) {
       return null;
     }
@@ -41,10 +48,10 @@ export function useImageProcessor(settings: AppSettings) {
     return {
       left,
       top,
-      right: left + current.width,
-      bottom: top + current.height,
-      width: current.width,
-      height: current.height,
+      right: left + activeGroup.width,
+      bottom: top + activeGroup.height,
+      width: activeGroup.width,
+      height: activeGroup.height,
     };
   })();
 
@@ -69,6 +76,7 @@ export function useImageProcessor(settings: AppSettings) {
     isDetecting: detection.isDetecting,
 
     batchPlan: plan.batchPlan,
+    activeGroup,
     isPlanning: plan.isPlanning,
 
     isProcessing: runner.isProcessing,

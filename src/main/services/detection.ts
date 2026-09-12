@@ -1,6 +1,6 @@
 // src/main/services/detection.ts
-import sharp from 'sharp';
 import { BoundingBox, DetectionColorMode, TrimDirection } from '../../shared/types';
+import { openImage } from './imageSource';
 
 export interface Rgb {
   r: number;
@@ -257,7 +257,7 @@ export async function detectWhitespaceBounds(
 ): Promise<DetectionResult> {
   const { colorMode, customColorHex = '#ffffff', threshold, direction, noiseTolerance } = options;
 
-  const image = sharp(filePath);
+  const image = await openImage(filePath);
   const { data, info } = await image.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const { width: w, height: h, channels } = info;
 

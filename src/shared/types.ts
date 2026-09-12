@@ -17,8 +17,14 @@ export interface BoundingBox {
   height: number;
 }
 
-/** 一括処理で全画像に適用する統一プラン */
-export interface BatchPlan {
+/**
+ * 同じ元寸法の画像だけをまとめた統一プラン。
+ * 判型の違うもの（表紙と本文など）を同じ寸法に揃えると、
+ * 小さい側へ不要な余白が大量に足されてしまうため、元寸法ごとに分ける。
+ */
+export interface BatchPlanGroup {
+  /** 元画像の寸法キー（"1210x1920"） */
+  sourceKey: string;
   /** 統一後の出力サイズ（仕上げマージンを足す前） */
   width: number;
   height: number;
@@ -27,7 +33,15 @@ export interface BatchPlan {
    * サイズだけを揃える場合は null で、各画像は個別に検出した位置で切り出す。
    */
   sharedBox: BoundingBox | null;
-  /** 解析できた画像の枚数 */
+  /** このグループに属する画像の枚数 */
+  memberCount: number;
+}
+
+/** 一括処理で使う統一プラン */
+export interface BatchPlan {
+  /** 元寸法ごとのグループ */
+  groups: BatchPlanGroup[];
+  /** 解析できた画像の総数 */
   analyzedCount: number;
 }
 

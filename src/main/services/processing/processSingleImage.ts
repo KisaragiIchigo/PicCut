@@ -1,9 +1,10 @@
 // src/main/services/processing/processSingleImage.ts
 import fs from 'node:fs';
 import path from 'node:path';
-import sharp from 'sharp';
+import { findPlanGroup } from '../../../shared/batchPlan';
 import { BatchPlan, ProcessImageOptions } from '../../../shared/types';
 import { detectWithCache } from '../detectionCache';
+import { openImage } from '../imageSource';
 import { applyExtensions, RgbaFill } from './applyExtensions';
 import { applyOutputFormat } from './applyOutputFormat';
 import { buildCropGeometry } from './buildCropGeometry';
@@ -32,13 +33,14 @@ export async function processSingleImageFile(
     direction: options.direction,
   });
 
-  // 位置も揃える場合のみ共通矩形で切る。サイズだけ揃える場合は、
-  // 余白のある側が画像ごとに異なっても正しく削れるよう個別の検出結果で切る。
+  // 揃える相手は同じ判型の画像だけ。元寸法の違う画像に引っ張られて
+  // 余白が足されることがないよう、自分の寸法のグループを引く。
+  const group = findPlanGroup(plan, detected.imageWidth, detected.imageHeight);
   const geometry = buildCropGeometry(
     detected.box,
     detected.imageWidth,
     detected.imageHeight,
-    plan ?? null
+    group
   );
 
   // 検出した背景色。統一時の不足分の補填と marginBgMode: 'sampled' で共用する
@@ -47,7 +49,7 @@ export async function processSingleImageFile(
     : { ...detected.background, alpha: 1 };
 
   const extended = await applyExtensions(
-    sharp(filePath).extract(geometry.crop),
+    (await openImage(filePath)).extract(geometry.crop),
     options,
     geometry,
     sampledFill
